@@ -1,36 +1,100 @@
+var FIELD_SIZE = 7;
+var TO_WIN = 5;
+var MAX_LEVEL = 3;
+var SCALE = 75;
+
 function Game() {
+    function genField(fieldSize) {
+        var field = [];
+        for (var i = 0; i < fieldSize; ++i) {
+            var row = [];
+            for (var j = 0; j < fieldSize; ++j) {
+                row.push(0);
+            }
+            field.push(row);
+        }
+        return field;
+    };
+
     return {
-        cellData: [
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 0, 0]
-        ],
+        cellData: genField(FIELD_SIZE),
         aiMoves: false,
         finished: false,
         gameOver: function(field) {
-            for (var i = 0; i < 3; i++) {
-                if (field[i][0] != 0 &&
-                    field[i][0] == field[i][1] &&
-                    field[i][1] == field[i][2])
-                    return 1;
+            for (var i = 0; i < FIELD_SIZE; i++) {
+                var cnt = 1;
+                var el = 0;
+                for (var j = 1; j < FIELD_SIZE; ++j) {
+                    el = field[i][j];
+                    if (field[i][j] == field[i][j-1]) {
+                        cnt++;
+                    } else {
+                        cnt = 1;
+                    }
+                    if (cnt == TO_WIN && el != 0) {
+                        return true;
+                    }
+                }
             }
-            for (var j = 0; j < 3; j++) {
-                if (field[0][j] != 0 &&
-                    field[0][j] == field[1][j] &&
-                    field[1][j] == field[2][j])
-                    return 1;
+            for (var i = 0; i < FIELD_SIZE; i++) {
+                var cnt = 1;
+                var el = 0;
+                if (field[0][i] == 0) {
+                    break;
+                }
+                for (var j = 1; j < FIELD_SIZE; ++j) {
+                    el = field[j][i];
+                    if (field[j][i] == field[j-1][i]) {
+                        cnt++;
+                    } else {
+                        cnt = 1;
+                    }
+                    if (cnt == TO_WIN && el != 0) {
+                        return true;
+                    }
+                }
             }
-            if (field[0][0] != 0 &&
-                field[0][0] == field[1][1] &&
-                field[1][1] == field[2][2])
-                return 1;
-            if (field[0][2] != 0 &&
-                field[0][2] == field[1][1] &&
-                field[1][1] == field[2][0])
-                return 1;
 
-            for (var i = 0; i < 3; i++) {
-                for (var j = 0; j < 3; j++) {
+            for (var k = 0; k < FIELD_SIZE - TO_WIN; ++k) {
+                for (var l = 0; l < FIELD_SIZE - TO_WIN; ++l) {
+                    var cnt = 1;
+                    var el = 0;
+                    for (var i = k+1; i < k+TO_WIN; ++i) {
+                        var j = l+1;
+                        el = field[i][j];
+                        if (field[i][j] == field[i-1][j-1]) {
+                            cnt++;
+                        } else {
+                            cnt = 1;
+                        }
+                        if (cnt == TO_WIN && el != 0) {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            for (var k = 0; k < FIELD_SIZE - TO_WIN; ++k) {
+                for (var l = 0; l < FIELD_SIZE - TO_WIN; ++l) {
+                    var cnt = 1;
+                    var el = 0;
+                    for (var i = k+1; i < k+TO_WIN; ++i) {
+                        var j = i - TO_WIN;
+                        el = field[i][j];
+                        if (field[i][j] == field[i-1][j-1]) {
+                            cnt++;
+                        } else {
+                            cnt = 1;
+                        }
+                        if (cnt == TO_WIN && el != 0) {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            for (var i = 0; i < FIELD_SIZE; i++) {
+                for (var j = 0; j < FIELD_SIZE; j++) {
                     if (field[i][j] == 0)
                         return 0;
                 }
@@ -38,25 +102,20 @@ function Game() {
             return -1;
         },
         cloneField: function(f) {
-            var t = [
-                [0, 0, 0],
-                [0, 0, 0],
-                [0, 0, 0]
-            ];
-            for (var i = 0; i < 3; i++)
-                for (var j = 0; j < 3; j++)
+            var t = genField(FIELD_SIZE);
+            for (var i = 0; i < FIELD_SIZE; i++)
+                for (var j = 0; j < FIELD_SIZE; j++)
                     t[i][j] = f[i][j];
             return t;
         },
         minimax: function(field, who, lv) {
+            if (lv > MAX_LEVEL) {
+                return "STOP";
+            }
             // who == true - cross
             // who == false - circle
 
             var gameover = this.gameOver(field);
-            var tab = "";
-            for (var i = 0; i < lv; i++) {
-                tab += "\t";
-            }
 
             if (gameover) {
                 if (gameover == -1)
@@ -70,11 +129,18 @@ function Game() {
                     "i": -1,
                     "j": -1
                 };
-                for (var i = 0; i < 3; i++) {
-                    for (var j = 0; j < 3; j++) {
+                for (var i = 0; i < FIELD_SIZE; i++) {
+                    for (var j = 0; j < FIELD_SIZE; j++) {
                         if (field[i][j] == 0) {
                             field[i][j] = who ? 1 : 2;
                             var result = this.minimax(this.cloneField(field), !who, lv+1);
+                            if (result == "STOP") {
+                                return {
+                                    v: who ? 1 : -1,
+                                    i: i,
+                                    j: j
+                                };
+                            }
                             if (who) {
                                 if (result.v >= move.v) {
                                     move.v = result.v;
@@ -107,12 +173,14 @@ function Game() {
                     this.cellData[row][col] = 1;
 
                     var pgo = this.gameOver(this.cellData);
+                    console.info(pgo);
                     if (!pgo) {
                         this.aiMoves = true;
                         this.aiMove();
                         this.aiMoves = false;
 
                         var aigo = this.gameOver(this.cellData);
+                        console.info(aigo);
                         if (aigo) {
                             if (aigo == 1)
                                 return -1;
@@ -199,13 +267,13 @@ function UI(_offsetX, _offsetY, _cellSize, _cellColor) {
             ctx.font = Math.round(this.cellSize*0.7).toString() + 'pt Monospace';
             ctx.textAlign = 'center';
             ctx.fillStyle = 'Black';
-            ctx.fillText(string, this.offsetX + this.cellSize*3/2, this.offsetY - this.cellSize);
+            ctx.fillText(string, this.offsetX + this.cellSize*FIELD_SIZE/2, this.offsetY - this.cellSize);
         },
         handleClick: function(x, y) {
             x -= this.offsetX-4;
             y -= this.offsetY-4;
 
-            if (x >= 0 && y >= 0 && x <= this.cellSize*3 && y <= this.cellSize*3) {
+            if (x >= 0 && y >= 0 && x <= this.cellSize*FIELD_SIZE && y <= this.cellSize*FIELD_SIZE) {
                 return {
                     "x": Math.floor(x/this.cellSize),
                     "y": Math.floor(y/this.cellSize)
@@ -226,16 +294,18 @@ window.onload = function(event) {
     canvas.width = width;
     canvas.height = height;
 
-    var cellSize = 100;
-    var ui = new UI(width/2 - cellSize*3/2, height/2 - cellSize*3/2, cellSize, "black");
+    var cellSize = SCALE;
+    var ui = new UI(width/2 - cellSize*FIELD_SIZE/2, height/2 - cellSize*FIELD_SIZE/2, cellSize, "black");
     var game = new Game();
 
     canvas.onmousedown = function(event) {
         var x = event.clientX;
         var y = event.clientY;
         var coord = ui.handleClick(x, y);
+        console.info("Clicked", coord);
         if (typeof coord == "object" && !game.finished) {
             var result = game.userClick(coord.y, coord.x);
+            console.info("game.userClick", result);
             ui.drawCellData(ctx, game.cellData);
             if (result) {
                 game.finished = true;
@@ -253,5 +323,5 @@ window.onload = function(event) {
         }
     }
 
-    ui.drawGrid(ctx, 3, 3);
+    ui.drawGrid(ctx, FIELD_SIZE, FIELD_SIZE);
 };
